@@ -1,345 +1,1281 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PDF Hunter</title>
+    <meta charset="UTF-8">
 
-<style>
-:root {
-    --blue: #1463ff;
-    --dark: #111827;
-    --gray: #6b7280;
-    --light: #f3f5f8;
-}
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0">
 
-* {
-    box-sizing: border-box;
-}
+    <title>PDF Hunter</title>
 
-body {
-    margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    background: var(--light);
-    color: var(--dark);
-}
+    <style>
 
-.container {
-    max-width: 850px;
-    margin: auto;
-    padding: 25px 16px 50px;
-}
+        :root {
+            --blue: #1463ff;
+            --blue-dark: #0d4dcc;
+            --dark: #111827;
+            --gray: #6b7280;
+            --light: #f3f5f8;
+            --white: #ffffff;
+            --border: #d9dee7;
+            --success: #0f9d62;
+        }
 
-header {
-    text-align: center;
-    padding: 35px 10px 25px;
-}
+        * {
+            box-sizing: border-box;
+        }
 
-.logo {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 65px;
-    height: 65px;
-    background: var(--blue);
-    border-radius: 18px;
-    font-size: 32px;
-}
+        body {
+            margin: 0;
 
-h1 {
-    margin: 15px 0 8px;
-    font-size: 32px;
-}
+            font-family:
+                -apple-system,
+                BlinkMacSystemFont,
+                "Segoe UI",
+                Roboto,
+                Arial,
+                sans-serif;
 
-.subtitle {
-    color: var(--gray);
-    line-height: 1.5;
-}
+            background: var(--light);
+            color: var(--dark);
+        }
 
-.card {
-    background: white;
-    border-radius: 20px;
-    padding: 20px;
-    box-shadow: 0 8px 30px rgba(0,0,0,.07);
-}
+        .container {
+            max-width: 850px;
+            margin: auto;
+            padding: 25px 16px 50px;
+        }
 
-label {
-    display: block;
-    font-weight: 700;
-    margin-bottom: 9px;
-}
+        header {
+            text-align: center;
+            padding: 35px 10px 25px;
+        }
 
-.row {
-    display: flex;
-    gap: 10px;
-}
+        .logo {
+            width: 64px;
+            height: 64px;
 
-input {
-    flex: 1;
-    min-width: 0;
-    padding: 15px;
-    border: 1px solid #d9dee7;
-    border-radius: 12px;
-    font-size: 16px;
-}
+            margin: 0 auto 12px;
 
-button {
-    border: 0;
-    background: var(--blue);
-    color: white;
-    border-radius: 12px;
-    padding: 15px 18px;
-    font-size: 16px;
-    font-weight: 700;
-}
+            border-radius: 18px;
 
-.note {
-    font-size: 13px;
-    color: var(--gray);
-    margin-top: 13px;
-}
+            background:
+                linear-gradient(
+                    135deg,
+                    #1d68ff,
+                    #1648a6
+                );
 
-.status {
-    margin: 22px 0;
-    text-align: center;
-    color: var(--gray);
-}
+            display: flex;
+            align-items: center;
+            justify-content: center;
 
-.results {
-    margin-top: 20px;
-    display: none;
-}
+            font-size: 30px;
 
-.topbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 12px;
-}
+            box-shadow:
+                0 10px 25px
+                rgba(20, 99, 255, .20);
+        }
 
-.pdf {
-    background: white;
-    border-radius: 14px;
-    padding: 14px;
-    margin-bottom: 10px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    box-shadow: 0 3px 12px rgba(0,0,0,.05);
-}
+        h1 {
+            margin: 0;
 
-.pdf input {
-    flex: none;
-    width: 20px;
-    height: 20px;
-}
+            font-size: 30px;
 
-.icon {
-    font-size: 25px;
-}
+            letter-spacing: .2px;
+        }
 
-.info {
-    flex: 1;
-    min-width: 0;
-}
+        .subtitle {
+            margin: 8px auto 0;
 
-.name {
-    font-weight: 700;
-}
+            color: var(--gray);
 
-.url {
-    color: var(--gray);
-    font-size: 12px;
-    margin-top: 4px;
-    word-break: break-all;
-}
+            font-size: 16px;
 
-.open {
-    color: var(--blue);
-    text-decoration: none;
-    font-weight: 700;
-}
+            line-height: 1.5;
 
-footer {
-    text-align: center;
-    margin-top: 30px;
-    font-size: 12px;
-    color: var(--gray);
-}
+            max-width: 500px;
+        }
 
-@media(max-width:600px) {
-    .row {
-        flex-direction: column;
-    }
+        .card {
 
-    .row button {
-        width: 100%;
-    }
-}
-</style>
+            background:
+                rgba(255, 255, 255, .94);
+
+            border:
+                1px solid var(--border);
+
+            border-radius: 20px;
+
+            padding: 18px;
+
+            box-shadow:
+                0 10px 30px
+                rgba(17, 24, 39, .06);
+        }
+
+        label {
+
+            display: block;
+
+            font-weight: 700;
+
+            margin-bottom: 9px;
+
+            font-size: 15px;
+        }
+
+        .row {
+
+            display: flex;
+
+            gap: 10px;
+        }
+
+        input {
+
+            flex: 1;
+
+            min-width: 0;
+
+            width: 100%;
+
+            padding: 15px 14px;
+
+            border:
+                1px solid #cfd6e2;
+
+            border-radius: 13px;
+
+            font-size: 16px;
+
+            outline: none;
+
+            background: #fff;
+        }
+
+        input:focus {
+
+            border-color:
+                var(--blue);
+
+            box-shadow:
+                0 0 0 3px
+                rgba(20, 99, 255, .12);
+        }
+
+        button {
+
+            border: 0;
+
+            border-radius: 13px;
+
+            padding: 14px 18px;
+
+            font-size: 16px;
+
+            font-weight: 700;
+
+            cursor: pointer;
+
+            transition: .18s ease;
+        }
+
+        button:active {
+
+            transform:
+                scale(.98);
+        }
+
+        .primary {
+
+            width: 100%;
+
+            margin-top: 10px;
+
+            background:
+                var(--blue);
+
+            color: #fff;
+        }
+
+        .primary:hover {
+
+            background:
+                var(--blue-dark);
+        }
+
+        .secondary {
+
+            background:
+                #eef3ff;
+
+            color:
+                var(--blue-dark);
+        }
+
+        .secondary:hover {
+
+            background:
+                #e3ebff;
+        }
+
+        .note {
+
+            margin:
+                12px 2px 0;
+
+            color:
+                var(--gray);
+
+            font-size: 13px;
+
+            line-height: 1.45;
+        }
+
+        .status {
+
+            margin-top: 14px;
+
+            font-size: 14px;
+
+            min-height: 20px;
+
+            color:
+                var(--gray);
+        }
+
+        .status.error {
+
+            color: #c62828;
+        }
+
+        .status.success {
+
+            color:
+                var(--success);
+        }
+
+        .results {
+
+            margin-top: 22px;
+
+            display: none;
+        }
+
+        .topbar {
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content:
+                space-between;
+
+            gap: 12px;
+
+            margin-bottom: 12px;
+        }
+
+        .count {
+
+            font-weight: 800;
+
+            font-size: 18px;
+        }
+
+        .actions {
+
+            display: flex;
+
+            gap: 8px;
+
+            flex-wrap: wrap;
+        }
+
+        .pdf-list {
+
+            display: grid;
+
+            gap: 10px;
+        }
+
+        .pdf-item {
+
+            display: flex;
+
+            align-items: center;
+
+            gap: 12px;
+
+            background: #fff;
+
+            border:
+                1px solid var(--border);
+
+            border-radius: 16px;
+
+            padding: 14px;
+
+            box-shadow:
+                0 5px 18px
+                rgba(17, 24, 39, .04);
+        }
+
+        .pdf-icon {
+
+            width: 38px;
+
+            height: 38px;
+
+            flex:
+                0 0 38px;
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: center;
+
+            font-size: 21px;
+
+            background:
+                #f4f6f9;
+
+            border-radius: 10px;
+        }
+
+        .pdf-info {
+
+            min-width: 0;
+
+            flex: 1;
+        }
+
+        .pdf-name {
+
+            font-weight: 750;
+
+            line-height: 1.3;
+
+            overflow-wrap:
+                anywhere;
+        }
+
+        .pdf-url {
+
+            margin-top: 4px;
+
+            color:
+                var(--gray);
+
+            font-size: 12px;
+
+            overflow-wrap:
+                anywhere;
+        }
+
+        .open-btn {
+
+            text-decoration: none;
+
+            color:
+                var(--blue-dark);
+
+            font-weight: 800;
+
+            white-space:
+                nowrap;
+
+            padding:
+                9px 10px;
+        }
+
+        .empty {
+
+            text-align: center;
+
+            padding: 25px 15px;
+
+            color:
+                var(--gray);
+
+            background: #fff;
+
+            border:
+                1px dashed #cbd2dc;
+
+            border-radius: 16px;
+        }
+
+        footer {
+
+            text-align: center;
+
+            margin-top: 32px;
+
+            color:
+                var(--gray);
+
+            font-size: 13px;
+
+            line-height: 1.7;
+        }
+
+        footer strong {
+
+            color:
+                #374151;
+        }
+
+        @media (max-width: 520px) {
+
+            .container {
+
+                padding:
+                    18px 14px 40px;
+            }
+
+            header {
+
+                padding-top: 20px;
+            }
+
+            .row {
+
+                flex-direction:
+                    column;
+            }
+
+            .topbar {
+
+                align-items:
+                    flex-start;
+
+                flex-direction:
+                    column;
+            }
+
+            .pdf-item {
+
+                align-items:
+                    flex-start;
+            }
+
+            .open-btn {
+
+                padding-right: 0;
+            }
+        }
+
+    </style>
+
 </head>
+
 
 <body>
 
 <div class="container">
 
+
 <header>
+
 <div class="logo">📚</div>
+
 <h1>PDF Hunter</h1>
-<div class="subtitle">
-Détectez les fichiers PDF publiquement accessibles sur une page web.
-</div>
+
+<p class="subtitle">
+
+Détectez et téléchargez les fichiers PDF
+publiquement accessibles sur une page web.
+
+</p>
+
 </header>
 
-<div class="card">
+
+
+<main>
+
+
+<section class="card">
+
 
 <label for="url">
+
 Lien de la page à analyser
+
 </label>
+
 
 <div class="row">
 
 <input
+
 id="url"
+
 type="url"
+
 placeholder="https://exemple.com/page-des-livres"
+
+autocomplete="url"
+
 >
 
-<button onclick="scan()">
+</div>
+
+
+<button
+
+class="primary"
+
+id="scanBtn"
+
+onclick="scan()"
+
+>
+
 🔍 Analyser
+
 </button>
 
-</div>
 
 <p class="note">
-L'outil recherche les liens PDF directement présents sur la page.
+
+L'outil recherche les liens PDF
+directement présents sur la page.
+
 </p>
 
+
+<div
+
+id="status"
+
+class="status"
+
+>
+
 </div>
 
-<div id="status" class="status"></div>
 
-<div id="results" class="results">
+</section>
+
+
+
+<section
+
+id="results"
+
+class="results"
+
+>
+
 
 <div class="topbar">
-<strong id="count"></strong>
+
+
+<div class="count">
+
+<span id="count">0</span>
+
+PDF trouvé(s)
+
 </div>
 
-<div id="list"></div>
+
+<div class="actions">
+
+
+<button
+
+id="downloadAllBtn"
+
+class="secondary"
+
+onclick="downloadAll()"
+
+style="display:none"
+
+>
+
+⬇️ Tout télécharger
+
+</button>
+
 
 </div>
+
+
+</div>
+
+
+
+<div
+
+id="list"
+
+class="pdf-list"
+
+>
+
+</div>
+
+
+</section>
+
+
+</main>
+
+
 
 <footer>
-PDF Hunter • Analyse de liens publics
-</footer>
+
+<div>
+
+PDF Hunter — Analyse de liens publics
 
 </div>
+
+<strong>
+
+Conçu par Rigobert MUMBERE |
+RIGOURA DESIGN
+
+</strong>
+
+</footer>
+
+
+</div>
+
+
 
 <script>
 
+
+let pdfLinks = [];
+
+
+
+function extractLinks(data) {
+
+    if (Array.isArray(data)) {
+
+        return data;
+
+    }
+
+    if (!data) {
+
+        return [];
+
+    }
+
+    return
+        data.pdfs ||
+        data.links ||
+        data.results ||
+        data.files ||
+        [];
+
+}
+
+
+
+function getUrl(item) {
+
+    if (typeof item === "string") {
+
+        return item;
+
+    }
+
+    return
+        item.url ||
+        item.href ||
+        item.link ||
+        item.download_url ||
+        "";
+
+}
+
+
+
+function getName(item, url) {
+
+    if (
+        typeof item === "object" &&
+        item.name
+    ) {
+
+        return item.name;
+
+    }
+
+    try {
+
+        return
+            decodeURIComponent(
+
+                new URL(url)
+                .pathname
+                .split("/")
+                .pop()
+
+            )
+            ||
+            "Document PDF";
+
+    }
+
+    catch (e) {
+
+        return "Document PDF";
+
+    }
+
+}
+
+
+
 async function scan() {
 
-const url = document.getElementById('url').value.trim();
 
-const status = document.getElementById('status');
+    const input =
+        document.getElementById("url");
 
-const results = document.getElementById('results');
 
-if (!url) {
-status.textContent = "Veuillez coller un lien.";
-return;
+    const url =
+        input.value.trim();
+
+
+    const status =
+        document.getElementById("status");
+
+
+    const button =
+        document.getElementById("scanBtn");
+
+
+
+    if (!url) {
+
+
+        status.textContent =
+            "Veuillez entrer un lien à analyser.";
+
+
+        status.className =
+            "status error";
+
+
+        input.focus();
+
+
+        return;
+
+    }
+
+
+
+    try {
+
+        new URL(url);
+
+    }
+
+    catch (e) {
+
+
+        status.textContent =
+            "Veuillez entrer une adresse web valide.";
+
+
+        status.className =
+            "status error";
+
+
+        input.focus();
+
+
+        return;
+
+    }
+
+
+
+    status.textContent =
+        "Analyse en cours...";
+
+
+    status.className =
+        "status";
+
+
+    button.disabled =
+        true;
+
+
+    button.textContent =
+        "⏳ Analyse...";
+
+
+
+    try {
+
+
+        const response =
+            await fetch(
+                "/scan",
+                {
+
+                    method: "POST",
+
+                    headers: {
+
+                        "Content-Type":
+                            "application/json"
+
+                    },
+
+                    body:
+                        JSON.stringify({
+                            url: url
+                        })
+
+                }
+            );
+
+
+
+        let data;
+
+
+
+        try {
+
+            data =
+                await response.json();
+
+        }
+
+        catch (e) {
+
+            throw new Error(
+                "Le serveur a renvoyé une réponse invalide."
+            );
+
+        }
+
+
+
+        if (!response.ok) {
+
+            throw new Error(
+
+                data.error ||
+
+                data.message ||
+
+                "Impossible d'analyser cette page."
+
+            );
+
+        }
+
+
+
+        pdfLinks =
+
+            extractLinks(data)
+
+            .map(getUrl)
+
+            .filter(Boolean)
+
+            .filter(
+
+                (
+                    value,
+                    index,
+                    array
+                ) =>
+
+                    array.indexOf(value)
+                    === index
+
+            );
+
+
+
+        renderResults();
+
+
+
+        if (pdfLinks.length) {
+
+
+            status.textContent =
+                "Analyse terminée avec succès.";
+
+
+            status.className =
+                "status success";
+
+
+        }
+
+        else {
+
+
+            status.textContent =
+                "Aucun lien PDF public n'a été trouvé sur cette page.";
+
+
+            status.className =
+                "status";
+
+
+        }
+
+
+    }
+
+
+    catch (error) {
+
+
+        status.textContent =
+
+            error.message ||
+
+            "Une erreur est survenue pendant l'analyse.";
+
+
+        status.className =
+            "status error";
+
+
+        pdfLinks = [];
+
+
+        renderResults();
+
+
+    }
+
+
+    finally {
+
+
+        button.disabled =
+            false;
+
+
+        button.textContent =
+            "🔍 Analyser";
+
+
+    }
+
+
 }
 
-status.textContent = "Analyse de la page en cours...";
 
-results.style.display = "none";
 
-try {
+function renderResults() {
 
-const response = await fetch('/scan', {
 
-method: 'POST',
+    const results =
+        document.getElementById("results");
 
-headers: {
-'Content-Type': 'application/json'
-},
 
-body: JSON.stringify({
-url: url
-})
+    const list =
+        document.getElementById("list");
 
-});
 
-const data = await response.json();
+    const count =
+        document.getElementById("count");
 
-if (!response.ok) {
-throw new Error(data.error);
+
+    const downloadAllBtn =
+        document.getElementById(
+            "downloadAllBtn"
+        );
+
+
+
+    results.style.display =
+        "block";
+
+
+    count.textContent =
+        pdfLinks.length;
+
+
+    list.innerHTML =
+        "";
+
+
+
+    if (!pdfLinks.length) {
+
+
+        downloadAllBtn.style.display =
+            "none";
+
+
+        list.innerHTML =
+
+            '<div class="empty">' +
+
+            'Aucun PDF trouvé.' +
+
+            '</div>';
+
+
+        return;
+
+    }
+
+
+
+    downloadAllBtn.style.display =
+        "inline-block";
+
+
+
+    pdfLinks.forEach(
+
+        (url, index) => {
+
+
+            const name =
+                getName(url, url);
+
+
+
+            const item =
+                document.createElement("div");
+
+
+            item.className =
+                "pdf-item";
+
+
+
+            item.innerHTML = `
+
+                <div class="pdf-icon">
+
+                    📄
+
+                </div>
+
+
+                <div class="pdf-info">
+
+
+                    <div class="pdf-name">
+
+                        ${escapeHtml(name)}
+
+                    </div>
+
+
+                    <div class="pdf-url">
+
+                        ${escapeHtml(url)}
+
+                    </div>
+
+
+                </div>
+
+
+                <a
+
+                    class="open-btn"
+
+                    href="${escapeAttribute(url)}"
+
+                    target="_blank"
+
+                    rel="noopener"
+
+                >
+
+                    Ouvrir
+
+                </a>
+
+            `;
+
+
+
+            list.appendChild(item);
+
+
+        }
+
+    );
+
+
 }
 
-const pdfs = data.pdfs || [];
 
-document.getElementById('count').textContent =
-pdfs.length + " PDF trouvé(s)";
 
-const list = document.getElementById('list');
+function escapeHtml(value) {
 
-list.innerHTML = "";
 
-pdfs.forEach(function(pdf) {
+    return String(value)
 
-const div = document.createElement('div');
+        .replace(/&/g, "&amp;")
 
-div.className = "pdf";
+        .replace(/</g, "&lt;")
 
-div.innerHTML = `
-<div class="icon">📄</div>
+        .replace(/>/g, "&gt;")
 
-<div class="info">
+        .replace(/"/g, "&quot;")
 
-<div class="name">${pdf.name}</div>
+        .replace(/'/g, "&#039;");
 
-<div class="url">${pdf.url}</div>
-
-</div>
-
-<a class="open"
-href="${pdf.url}"
-target="_blank">
-
-Ouvrir
-
-</a>
-`;
-
-list.appendChild(div);
-
-});
-
-if (pdfs.length === 0) {
-
-status.textContent =
-"Aucun lien PDF trouvé sur cette page.";
-
-} else {
-
-status.textContent = "";
-
-results.style.display = "block";
 
 }
 
+
+
+function escapeAttribute(value) {
+
+
+    return escapeHtml(value);
+
+
 }
 
-catch(error) {
 
-status.textContent =
-"Erreur : " + error.message;
+
+/*
+
+Télécharge tous les PDF trouvés.
+
+Le navigateur peut demander
+l'autorisation pour plusieurs téléchargements.
+
+*/
+
+
+async function downloadAll() {
+
+
+    if (!pdfLinks.length) {
+
+        return;
+
+    }
+
+
+
+    const button =
+        document.getElementById(
+            "downloadAllBtn"
+        );
+
+
+    const original =
+        button.textContent;
+
+
+
+    button.disabled =
+        true;
+
+
+    button.textContent =
+        "⏳ Préparation...";
+
+
+
+    for (
+
+        let i = 0;
+
+        i < pdfLinks.length;
+
+        i++
+
+    ) {
+
+
+        const url =
+            pdfLinks[i];
+
+
+
+        const link =
+            document.createElement("a");
+
+
+
+        link.href =
+            url;
+
+
+        link.target =
+            "_blank";
+
+
+        link.rel =
+            "noopener";
+
+
+        link.download =
+            "";
+
+
+
+        document.body.appendChild(link);
+
+
+        link.click();
+
+
+        link.remove();
+
+
+
+        await new Promise(
+
+            resolve =>
+
+                setTimeout(
+                    resolve,
+                    350
+                )
+
+        );
+
+
+    }
+
+
+
+    button.textContent =
+        original;
+
+
+    button.disabled =
+        false;
+
 
 }
 
-}
 
 </script>
 
+
 </body>
+
 </html>
