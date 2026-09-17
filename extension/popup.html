@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PDF Hunter</title>
+<style>
+body{width:420px;margin:0;font-family:Arial,sans-serif;background:#f5f7fb;color:#172033}header{background:#111827;color:#fff;padding:18px}h1{margin:0;font-size:22px}p{margin:6px 0 0;font-size:12px;opacity:.8}.bar{padding:12px;display:flex;gap:8px}button{border:0;border-radius:8px;padding:10px 12px;font-weight:700;cursor:pointer}#scan{background:#2563eb;color:white;flex:1}#zip{background:#16a34a;color:white}#zip:disabled{opacity:.45;cursor:not-allowed}.status{padding:0 12px 10px;font-size:13px}.list{max-height:430px;overflow:auto;padding:0 12px 12px}.item{background:white;border-radius:8px;padding:9px;margin:7px 0;border:1px solid #e5e7eb}.name{font-size:12px;font-weight:700;word-break:break-all}.meta{font-size:11px;color:#64748b;margin-top:3px}.open{margin-top:7px;background:#eef2ff;color:#3730a3;padding:7px 9px}.empty{padding:20px;text-align:center;color:#64748b;font-size:13px}
+</style>
+</head>
+<body>
+<header><h1>PDF Hunter</h1><p>Inspecteur local de la page actuelle</p></header>
+<div class="bar"><button id="scan">INSPECTER LA PAGE</button><button id="zip" disabled>TÉLÉCHARGER ZIP</button></div>
+<div id="status" class="status">Prêt.</div>
+<div id="list" class="list"><div class="empty">Cliquez sur « Inspecter la page ».</div></div>
+<script src="popup.js"></script>
+</body>
+</html>
