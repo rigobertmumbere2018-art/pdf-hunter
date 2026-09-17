@@ -1,21 +1,23 @@
 from flask import Flask, render_template, request, jsonify, send_file, after_this_request
 from bs4 import BeautifulSoup
-from urllib.parse import urljoin, urlparse, unquote
+from urllib.parse import urljoin, urlparse, unquote, parse_qs, urlencode
 from werkzeug.utils import secure_filename
 import requests
 import zipfile
 import tempfile
 import os
 import re
+import json
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 app = Flask(__name__)
 
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
     "Accept-Language": "fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7",
-    "Cache-Control": "no-cache"
+    "Cache-Control": "no-cache",
 }
 
 ALLOWED_EXTENSIONS = {".pdf", ".jpg", ".jpeg", ".png"}
@@ -23,6 +25,8 @@ TYPE_FOLDERS = {".pdf": "PDF", ".jpg": "JPG", ".jpeg": "JPEG", ".png": "PNG"}
 MAX_FILE_SIZE = 100 * 1024 * 1024
 MAX_FILES = 1000
 DOWNLOAD_WORKERS = 6
+PINTEREST_MAX_PAGES = 5
+PINTEREST_PAGE_SIZE = 50
 
 
 def is_safe_http_url(url):
@@ -47,7 +51,7 @@ def get_extension_from_content_type(content_type):
         "application/pdf": ".pdf",
         "image/jpeg": ".jpg",
         "image/jpg": ".jpg",
-        "image/png": ".png"
+        "image/png": ".png",
     }.get(content_type, "")
 
 
@@ -71,9 +75,7 @@ def clean_filename(name, fallback):
     name = (name or "").strip()
     name = unquote(name).replace("/", "_").replace("\\", "_")
     name = secure_filename(name)
-    if not name:
-        name = fallback
-    return name[:180]
+    return (name or fallback)[:180]
 
 
 def unique_archive_name(existing, filename):
@@ -88,7 +90,6 @@ def unique_archive_name(existing, filename):
 
 
 def pinterest_original_candidates(url):
-    """Return useful Pinterest CDN variants, original first when possible."""
     candidates = [url]
     try:
         parsed = urlparse(url)
@@ -97,8 +98,7 @@ def pinterest_original_candidates(url):
         if "pinimg.com" in host:
             match = re.match(r"^/(?:[0-9]+x|736x|564x|474x|236x|170x|75x)/(.+)$", path, re.I)
             if match:
-                original = "/originals/" + match.group(1)
-                candidates.insert(0, parsed._replace(path=original).geturl())
+                candidates.insert(0, parsed._replace(path="/originals/" + match.group(1)).geturl())
     except Exception:
         pass
     return list(dict.fromkeys(candidates))
@@ -106,28 +106,18 @@ def pinterest_original_candidates(url):
 
 def download_to_temp(url, referer=""):
     last_error = None
-    candidates = pinterest_original_candidates(url)
-
-    for candidate in candidates:
+    for candidate in pinterest_original_candidates(url):
         headers = dict(HEADERS)
+        headers["Accept"] = "image/avif,image/webp,image/apng,image/*,*/*;q=0.8" if "pinimg.com" in urlparse(candidate).netloc.lower() else HEADERS["Accept"]
         if referer and is_safe_http_url(referer):
             headers["Referer"] = referer
-        if "pinimg.com" in urlparse(candidate).netloc.lower():
-            headers["Accept"] = "image/avif,image/webp,image/apng,image/*,*/*;q=0.8"
 
         for _ in range(2):
             temp_path = None
             response = None
             try:
-                response = requests.get(
-                    candidate,
-                    headers=headers,
-                    timeout=(15, 60),
-                    stream=True,
-                    allow_redirects=True
-                )
+                response = requests.get(candidate, headers=headers, timeout=(15, 60), stream=True, allow_redirects=True)
                 response.raise_for_status()
-
                 final_url = response.url
                 content_type = response.headers.get("content-type", "")
                 content_length = response.headers.get("content-length")
@@ -138,7 +128,6 @@ def download_to_temp(url, referer=""):
                 temp_path = temp.name
                 total = 0
                 first_bytes = b""
-
                 for chunk in response.iter_content(chunk_size=1024 * 256):
                     if not chunk:
                         continue
@@ -148,16 +137,13 @@ def download_to_temp(url, referer=""):
                     if total > MAX_FILE_SIZE:
                         raise ValueError("Fichier trop volumineux")
                     temp.write(chunk)
-
                 temp.close()
                 response.close()
 
                 extension = detect_extension(final_url, content_type, first_bytes)
                 if extension not in ALLOWED_EXTENSIONS:
                     raise ValueError("Type de fichier non pris en charge")
-
                 return temp_path, extension, final_url
-
             except Exception as exc:
                 last_error = exc
                 try:
@@ -170,63 +156,181 @@ def download_to_temp(url, referer=""):
                         os.remove(temp_path)
                 except Exception:
                     pass
-
     raise last_error or RuntimeError("Téléchargement impossible")
 
 
 def add_found(found, seen, url, name=""):
     if not is_safe_http_url(url):
         return
-    clean_url = url.split("#")[0]
+    clean_url = url.split("#")[0].replace("\\/", "/")
     if clean_url in seen:
         return
     extension = get_extension_from_url(clean_url)
     if extension not in ALLOWED_EXTENSIONS:
         return
-
     seen.add(clean_url)
-    if not name:
-        name = os.path.basename(urlparse(clean_url).path)
-    if not name:
-        name = f"fichier{extension}"
+    name = name or os.path.basename(urlparse(clean_url).path) or f"fichier{extension}"
     if not os.path.splitext(name)[1]:
         name += extension
-
     found.append({
         "name": clean_filename(name, f"fichier{extension}"),
         "url": clean_url,
         "type": TYPE_FOLDERS[extension],
-        "extension": extension[1:].upper()
+        "extension": extension[1:].upper(),
     })
-
-
-def extract_pinterest_urls(text, page_url, found, seen):
-    """Extract image CDN URLs hidden inside Pinterest HTML/JSON."""
-    if not text:
-        return
-
-    decoded = text.replace(r"\u002F", "/").replace(r"\/", "/").replace(r"\u003A", ":")
-    patterns = [
-        r'https?://i\.pinimg\.com/[^\"\'<>\\\s]+',
-        r'https?:\\?/\\?/i\.pinimg\.com/[^\"\'<>\\\s]+'
-    ]
-
-    for pattern in patterns:
-        for match in re.findall(pattern, decoded, flags=re.I):
-            candidate = match.replace("\\/", "/").rstrip("\\")
-            candidate = candidate.split("#")[0]
-            add_found(found, seen, candidate)
 
 
 def extract_srcset(value):
     if not value:
         return []
-    results = []
-    for part in value.split(","):
-        item = part.strip().split(" ")[0]
-        if item:
-            results.append(item)
-    return results
+    return [part.strip().split(" ")[0] for part in value.split(",") if part.strip()]
+
+
+def extract_pinterest_urls(text, found, seen):
+    if not text:
+        return
+    decoded = text.replace(r"\u002F", "/").replace(r"\/", "/").replace(r"\u003A", ":")
+    patterns = [
+        r'https?://i\.pinimg\.com/[^"\'<>\\\s]+',
+        r'https?:\\?/\\?/i\.pinimg\.com/[^"\'<>\\\s]+',
+    ]
+    for pattern in patterns:
+        for match in re.findall(pattern, decoded, flags=re.I):
+            add_found(found, seen, match.rstrip("\\"))
+
+
+def extract_app_version(html):
+    patterns = [
+        r'"appVersion"\s*:\s*"([^"]+)"',
+        r'"app_version"\s*:\s*"([^"]+)"',
+        r'"pws_app_version"\s*:\s*"([^"]+)"',
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, html or "", flags=re.I)
+        if match:
+            return match.group(1)
+    return ""
+
+
+def pinterest_resource_search(page_url, session, found, seen):
+    """Use Pinterest's own public web resource feed to recover dynamically loaded pins."""
+    parsed = urlparse(page_url)
+    if "pinterest." not in parsed.netloc.lower() or not parsed.path.startswith("/search/pins"):
+        return 0, ""
+
+    query = parse_qs(parsed.query).get("q", [""])[0].strip()
+    if not query:
+        return 0, ""
+
+    app_version = extract_app_version(session._pdf_hunter_html if hasattr(session, "_pdf_hunter_html") else "")
+    csrf = session.cookies.get("csrftoken", "")
+    source_url = parsed.path or "/search/pins/"
+    if parsed.query:
+        source_url += "?" + parsed.query
+
+    headers = {
+        "User-Agent": HEADERS["User-Agent"],
+        "Accept": "application/json, text/javascript, */*; q=0.01",
+        "Accept-Language": HEADERS["Accept-Language"],
+        "X-Requested-With": "XMLHttpRequest",
+        "X-Pinterest-AppState": "active",
+        "X-NEW-APP": "1",
+        "Referer": page_url,
+    }
+    if app_version:
+        headers["X-APP-VERSION"] = app_version
+    if csrf:
+        headers["X-CSRFToken"] = csrf
+
+    bookmark = None
+    total = 0
+
+    for page_number in range(PINTEREST_MAX_PAGES):
+        options = {
+            "query": query,
+            "scope": "pins",
+            "page_size": PINTEREST_PAGE_SIZE,
+            "field_set_key": "react_grid_pin",
+            "bookmarks": [bookmark] if bookmark else [],
+        }
+        payload = {"options": options, "context": {}}
+        params = {
+            "source_url": source_url,
+            "data": json.dumps(payload, separators=(",", ":")),
+        }
+
+        try:
+            response = session.get(
+                "https://www.pinterest.com/resource/SearchResource/get/",
+                params=params,
+                headers=headers,
+                timeout=(15, 30),
+                allow_redirects=True,
+            )
+            if response.status_code in (403, 429):
+                return total, f"Pinterest a limité la recherche dynamique (HTTP {response.status_code})."
+            response.raise_for_status()
+            body = response.json()
+        except Exception as exc:
+            return total, f"Recherche dynamique Pinterest interrompue : {exc}"
+
+        resource = body.get("resource_response", {}) if isinstance(body, dict) else {}
+        data = resource.get("data", [])
+        if isinstance(data, dict):
+            data = data.get("results", [])
+        if not isinstance(data, list):
+            data = []
+
+        before = len(found)
+        for pin in data:
+            if not isinstance(pin, dict):
+                continue
+            images = pin.get("images") or {}
+            image_url = ""
+            for key in ("orig", "736x", "564x", "474x", "236x"):
+                value = images.get(key)
+                if isinstance(value, dict) and value.get("url"):
+                    image_url = value["url"]
+                    break
+            if image_url:
+                title = pin.get("title") or pin.get("grid_title") or pin.get("alt_text") or ""
+                pin_id = str(pin.get("id") or "").strip()
+                name = clean_filename(title, f"pin_{pin_id or len(found) + 1}.jpg")
+                add_found(found, seen, image_url, name)
+
+        total += max(0, len(found) - before)
+        next_bookmark = resource.get("bookmark")
+        if not next_bookmark or next_bookmark == "-end-" or next_bookmark == bookmark:
+            break
+        bookmark = next_bookmark
+        time.sleep(0.5)
+
+    return total, ""
+
+
+def extract_generic_html(html, response_url, found, seen):
+    soup = BeautifulSoup(html, "html.parser")
+    tags = soup.find_all(["a", "img", "source", "video", "audio", "iframe", "embed", "object", "link"])
+    attributes = ["href", "src", "data-src", "data-href", "data-original", "data-url", "data-lazy-src", "data-image-url"]
+
+    for tag in tags:
+        possible_urls = []
+        for attribute in attributes:
+            raw = tag.get(attribute)
+            if raw:
+                possible_urls.append(raw)
+        possible_urls.extend(extract_srcset(tag.get("srcset")))
+        possible_urls.extend(extract_srcset(tag.get("data-srcset")))
+        for raw_url in possible_urls:
+            clean_url = urljoin(response_url, raw_url).split("#")[0]
+            name = tag.get_text(" ", strip=True) or os.path.basename(urlparse(clean_url).path)
+            add_found(found, seen, clean_url, name)
+
+    extract_pinterest_urls(html, found, seen)
+
+    generic_pattern = r'https?://[^"\'<>\s]+\.(?:pdf|jpe?g|png)(?:\?[^"\'<>\s]*)?'
+    for match in re.findall(generic_pattern, html, flags=re.I):
+        add_found(found, seen, match)
 
 
 @app.route("/")
@@ -241,8 +345,11 @@ def scan():
     if not is_safe_http_url(page_url):
         return jsonify({"error": "Veuillez entrer une URL valide commençant par http:// ou https://"}), 400
 
+    session = requests.Session()
+    session.headers.update(HEADERS)
+
     try:
-        response = requests.get(page_url, headers=HEADERS, timeout=(15, 40), allow_redirects=True)
+        response = session.get(page_url, timeout=(15, 40), allow_redirects=True)
         response.raise_for_status()
     except requests.RequestException as exc:
         return jsonify({"error": f"Impossible d'ouvrir cette page : {exc}"}), 400
@@ -251,76 +358,52 @@ def scan():
     page_ext = detect_extension(response.url, content_type, response.content[:32])
     if page_ext in ALLOWED_EXTENSIONS:
         filename = os.path.basename(urlparse(response.url).path) or f"document{page_ext}"
-        return jsonify({
-            "files": [{
-                "name": clean_filename(filename, f"document{page_ext}"),
-                "url": response.url,
-                "type": TYPE_FOLDERS[page_ext],
-                "extension": page_ext[1:].upper()
-            }],
-            "count": 1
-        })
+        return jsonify({"files": [{"name": clean_filename(filename, f"document{page_ext}"), "url": response.url, "type": TYPE_FOLDERS[page_ext], "extension": page_ext[1:].upper()}], "count": 1, "source": "direct"})
 
     html = response.text
-    soup = BeautifulSoup(html, "html.parser")
+    session._pdf_hunter_html = html
     found = []
     seen = set()
 
-    tags = soup.find_all(["a", "img", "source", "video", "audio", "iframe", "embed", "object", "link"])
-    attributes = ["href", "src", "data-src", "data-href", "data-original", "data-url", "data-lazy-src", "data-image-url"]
+    extract_generic_html(html, response.url, found, seen)
 
-    for tag in tags:
-        possible_urls = []
-        for attribute in attributes:
-            raw = tag.get(attribute)
-            if raw:
-                possible_urls.append(raw)
-        for attribute in ("srcset", "data-srcset"):
-            raw = tag.get(attribute)
-            possible_urls.extend(extract_srcset(raw))
-
-        for raw_url in possible_urls:
-            clean_url = urljoin(response.url, raw_url).split("#")[0]
-            name = tag.get_text(" ", strip=True) or os.path.basename(urlparse(clean_url).path)
-            add_found(found, seen, clean_url, name)
-
-    # Pinterest stores many pin images only in serialized JSON, not as normal links.
-    extract_pinterest_urls(html, response.url, found, seen)
-
-    # Generic fallback: catch direct file URLs embedded in scripts/styles/JSON.
-    generic_pattern = r'https?://[^\"\'<>\s]+\.(?:pdf|jpe?g|png)(?:\?[^\"\'<>\s]*)?'
-    for match in re.findall(generic_pattern, html, flags=re.I):
-        add_found(found, seen, match.replace("\\/", "/"))
+    pinterest_message = ""
+    pinterest_count = 0
+    if "pinterest." in urlparse(page_url).netloc.lower():
+        pinterest_count, pinterest_message = pinterest_resource_search(page_url, session, found, seen)
 
     found.sort(key=lambda item: (item["extension"], item["name"].lower()))
-    return jsonify({"files": found, "count": len(found)})
+    return jsonify({
+        "files": found,
+        "count": len(found),
+        "source": "pinterest-resource" if pinterest_count else "html",
+        "pinterest_dynamic_count": pinterest_count,
+        "pinterest_message": pinterest_message,
+    })
 
 
 def prepare_download(item, index, page_url):
     if not isinstance(item, dict):
-        return {"ok": False, "index": index, "error": "Entrée invalide"}
+        return {"ok": False, "index": index}
     url = (item.get("url") or "").strip()
     if not is_safe_http_url(url):
-        return {"ok": False, "index": index, "error": "URL invalide"}
-
+        return {"ok": False, "index": index}
     temp_path = None
     try:
         temp_path, extension, final_url = download_to_temp(url, page_url)
         requested_name = item.get("name") or os.path.basename(urlparse(final_url).path)
         filename = clean_filename(requested_name, f"fichier_{index}{extension}")
         current_ext = get_extension_from_url(filename)
-        if current_ext not in ALLOWED_EXTENSIONS:
-            filename = os.path.splitext(filename)[0] + extension
-        elif current_ext != extension:
+        if current_ext not in ALLOWED_EXTENSIONS or current_ext != extension:
             filename = os.path.splitext(filename)[0] + extension
         return {"ok": True, "index": index, "temp_path": temp_path, "extension": extension, "filename": filename}
-    except Exception as exc:
+    except Exception:
         if temp_path and os.path.exists(temp_path):
             try:
                 os.remove(temp_path)
             except Exception:
                 pass
-        return {"ok": False, "index": index, "error": str(exc)}
+        return {"ok": False, "index": index}
 
 
 @app.post("/download-all")
@@ -328,7 +411,6 @@ def download_all():
     data = request.get_json(silent=True) or {}
     files = data.get("files") or data.get("pdfs") or []
     page_url = (data.get("page_url") or "").strip()
-
     if not isinstance(files, list) or not files:
         return jsonify({"error": "Aucun fichier à télécharger."}), 400
     if len(files) > MAX_FILES:
@@ -343,13 +425,11 @@ def download_all():
     temp_paths = []
 
     try:
-        # Downloads happen in parallel, then ZIP writing stays sequential and safe.
         results = []
         with ThreadPoolExecutor(max_workers=DOWNLOAD_WORKERS) as executor:
             futures = [executor.submit(prepare_download, item, index, page_url) for index, item in enumerate(files, start=1)]
             for future in as_completed(futures):
                 results.append(future.result())
-
         results.sort(key=lambda result: result.get("index", 0))
 
         with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6) as archive:
