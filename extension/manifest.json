@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "PDF Hunter Inspector",
+  "version": "1.0.0",
+  "description": "Inspecte la page actuellement ouverte et détecte les ressources graphiques publiques.",
+  "permissions": ["activeTab", "scripting", "downloads"],
+  "host_permissions": ["<all_urls>"],
+  "action": {
+    "default_title": "PDF Hunter"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
